@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../img/favicon.ico">
+        <title>Java 字符串拼接性能实测：基于 JMH 的微基准测试 - tech-blog</title>
+        <link href="../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../css/fontawesome.min.css" rel="stylesheet">
+        <link href="../../css/brands.min.css" rel="stylesheet">
+        <link href="../../css/solid.min.css" rel="stylesheet">
+        <link href="../../css/v4-font-face.min.css" rel="stylesheet">
+        <link href="../../css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../..">tech-blog</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar-collapse" aria-controls="navbar-collapse" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="nav-item">
+                                <a href="../.." class="nav-link">Welcome to MkDocs</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a href="#" class="nav-link dropdown-toggle active" aria-current="page" role="button" data-bs-toggle="dropdown"  aria-expanded="false">Jmh</a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="./" class="dropdown-item active" aria-current="page">Java 字符串拼接性能实测：基于 JMH 的微基准测试</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li class="nav-item">
+                                <a rel="prev" href="../.." class="nav-link">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a rel="next" class="nav-link disabled">
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="1"><a href="#java-jmh" class="nav-link">Java 字符串拼接性能实测：基于 JMH 的微基准测试</a>
+              <ul class="nav flex-column">
+            <li class="nav-item" data-bs-level="2"><a href="#_1" class="nav-link">🧪 测试目标</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#maven" class="nav-link">🧰 项目创建与配置（Maven）</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#_2" class="nav-link">📄 测试代码实现</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#github-actions" class="nav-link">🚀 GitHub Actions 自动化测试配置</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#ubuntu-github-actions" class="nav-link">📊 实测结果（Ubuntu + GitHub Actions）</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#_3" class="nav-link">🔍 原理解析</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#_4" class="nav-link">✅ 使用建议</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+            <li class="nav-item" data-bs-level="2"><a href="#_5" class="nav-link">🏁 总结</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="java-jmh">Java 字符串拼接性能实测：基于 JMH 的微基准测试</h1>
+<p>在 Java 开发中，字符串拼接操作无处不在。你可能会直接使用 <code>+</code>，也可能选择 <code>StringBuilder</code> 或 <code>StringBuffer</code>。它们在性能上究竟有何差别？在循环中拼接多个字符串时，哪种方式更高效？</p>
+<p>本文基于 JMH（Java Microbenchmark Harness）进行了系统性测试，并使用 GitHub Actions 在 Ubuntu 环境中实测了不同字符串拼接方式的性能。</p>
+<hr />
+<h2 id="_1">🧪 测试目标</h2>
+<p>比较以下三种拼接方式在高频场景下的性能差异：</p>
+<ol>
+<li><code>+</code> 操作符（语法糖，编译期转为 <code>StringBuilder.append</code>）</li>
+<li><code>StringBuilder.append</code></li>
+<li><code>StringBuffer.append</code></li>
+</ol>
+<hr />
+<h2 id="maven">🧰 项目创建与配置（Maven）</h2>
+<h3 id="1">1. 创建基础工程</h3>
+<pre><code class="language-bash">mvn archetype:generate \
+  -DgroupId=com.xinchentechnote \
+  -DartifactId=string-jmh \
+  -DarchetypeArtifactId=maven-archetype-quickstart \
+  -DinteractiveMode=false
+</code></pre>
+<h3 id="2-pomxml">2. 配置 <code>pom.xml</code></h3>
+<pre><code class="language-xml">&lt;dependencies&gt;
+  &lt;dependency&gt;
+    &lt;groupId&gt;org.openjdk.jmh&lt;/groupId&gt;
+    &lt;artifactId&gt;jmh-core&lt;/artifactId&gt;
+    &lt;version&gt;1.37&lt;/version&gt;
+  &lt;/dependency&gt;
+  &lt;dependency&gt;
+    &lt;groupId&gt;org.openjdk.jmh&lt;/groupId&gt;
+    &lt;artifactId&gt;jmh-generator-annprocess&lt;/artifactId&gt;
+    &lt;version&gt;1.37&lt;/version&gt;
+    &lt;scope&gt;provided&lt;/scope&gt;
+  &lt;/dependency&gt;
+&lt;/dependencies&gt;
+
+&lt;build&gt;
+  &lt;plugins&gt;
+    &lt;plugin&gt;
+      &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+      &lt;artifactId&gt;maven-compiler-plugin&lt;/artifactId&gt;
+      &lt;version&gt;3.8.1&lt;/version&gt;
+      &lt;configuration&gt;
+        &lt;source&gt;17&lt;/source&gt;
+        &lt;target&gt;17&lt;/target&gt;
+        &lt;annotationProcessorPaths&gt;
+          &lt;path&gt;
+            &lt;groupId&gt;org.openjdk.jmh&lt;/groupId&gt;
+            &lt;artifactId&gt;jmh-generator-annprocess&lt;/artifactId&gt;
+            &lt;version&gt;1.37&lt;/version&gt;
+          &lt;/path&gt;
+        &lt;/annotationProcessorPaths&gt;
+      &lt;/configuration&gt;
+    &lt;/plugin&gt;
+  &lt;/plugins&gt;
+&lt;/build&gt;
+</code></pre>
+<hr />
+<h2 id="_2">📄 测试代码实现</h2>
+<pre><code class="language-java">package com.xinchentechnote;
+
+import org.openjdk.jmh.annotations.*;
+
+import java.util.concurrent.TimeUnit;
+
+@BenchmarkMode({Mode.Throughput, Mode.AverageTime})
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
+@State(Scope.Thread)
+public class StringConcatBenchmark {
+
+    private String str1 = &quot;Hello&quot;;
+    private String str2 = &quot;World&quot;;
+    private String str3 = &quot;Java&quot;;
+    private int count = 100;
+
+    @Benchmark
+    public String testStringBuilder() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i &lt; count; i++) {
+            sb.append(str1);
+            sb.append(str2);
+            sb.append(str3);
+        }
+        return sb.toString();
+    }
+
+    @Benchmark
+    public String testStringBuffer() {
+        StringBuffer sb = new StringBuffer();
+        for (int i = 0; i &lt; count; i++) {
+            sb.append(str1);
+            sb.append(str2);
+            sb.append(str3);
+        }
+        return sb.toString();
+    }
+
+    @Benchmark
+    public String testStringPlus() {
+        String result = &quot;&quot;;
+        for (int i = 0; i &lt; count; i++) {
+            result += str1;
+            result += str2;
+            result += str3;
+        }
+        return result;
+    }
+}
+</code></pre>
+<hr />
+<h2 id="github-actions">🚀 GitHub Actions 自动化测试配置</h2>
+<pre><code class="language-yaml">name: JMH Benchmarks
+
+on:
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - run: mvn clean install -DskipTests
+      - run: java -jar target/benchmarks.jar StringConcatBenchmark
+</code></pre>
+<hr />
+<h2 id="ubuntu-github-actions">📊 实测结果（Ubuntu + GitHub Actions）</h2>
+<h3 id="throughput">📈 吞吐量测试（Throughput）</h3>
+<p>单位：每微秒执行的操作数（ops/us）</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>吞吐量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>StringBuilder</code></td>
+<td><strong>0.478 ops/us</strong></td>
+</tr>
+<tr>
+<td><code>StringBuffer</code></td>
+<td>0.448 ops/us</td>
+</tr>
+<tr>
+<td><code>+</code> 操作符</td>
+<td>🚫 0.199 ops/us</td>
+</tr>
+</tbody>
+</table>
+<h3 id="averagetime">⏱ 平均耗时测试（AverageTime）</h3>
+<p>单位：每次操作的平均耗时（us/op）</p>
+<table>
+<thead>
+<tr>
+<th>方法</th>
+<th>平均耗时</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>StringBuilder</code></td>
+<td><strong>2.021 us/op</strong></td>
+</tr>
+<tr>
+<td><code>StringBuffer</code></td>
+<td>2.237 us/op</td>
+</tr>
+<tr>
+<td><code>+</code> 操作符</td>
+<td>🚫 5.244 us/op</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_3">🔍 原理解析</h2>
+<ul>
+<li><code>StringBuilder</code>：非线程安全但性能最好，推荐在循环中使用。</li>
+<li><code>StringBuffer</code>：线程安全但性能略低。</li>
+<li><code>+</code> 操作符：虽然直观，但在循环中极其低效，会频繁创建临时对象，带来 GC 压力。</li>
+</ul>
+<hr />
+<h2 id="_4">✅ 使用建议</h2>
+<table>
+<thead>
+<tr>
+<th>拼接方式</th>
+<th>优点</th>
+<th>缺点</th>
+<th>推荐场景</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>StringBuilder</td>
+<td>性能最佳</td>
+<td>非线程安全</td>
+<td>单线程高频拼接</td>
+</tr>
+<tr>
+<td>StringBuffer</td>
+<td>线程安全</td>
+<td>性能略差</td>
+<td>多线程拼接场景</td>
+</tr>
+<tr>
+<td><code>+</code> 操作符</td>
+<td>简洁直观</td>
+<td>慢且 GC 压力大</td>
+<td>低频简易拼接</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_5">🏁 总结</h2>
+<p>本次 JMH 实测验证了开发经验中的最佳实践：<strong>在高频场景中，推荐使用 <code>StringBuilder</code> 进行字符串拼接。</strong></p>
+<hr />
+<h3 id="jmh-java">💡 JMH 小知识：Java 微基准测试利器</h3>
+<p><a href="https://openjdk.org/projects/code-tools/jmh/">JMH (Java Microbenchmark Harness)</a> 是由 Oracle 和 OpenJDK 团队专为 Java 编写的微基准测试框架，用于衡量 Java 方法在纳秒到微秒级别的性能表现。JMH 特别适用于需要精细分析方法调用开销、编译优化、副作用等对性能影响的场景。</p>
+<h4 id="_6">核心术语与注解解释：</h4>
+<table>
+<thead>
+<tr>
+<th>注解或参数</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@Benchmark</code></td>
+<td>标记要被测试的方法。每次运行都调用它并收集性能数据。</td>
+</tr>
+<tr>
+<td><code>@BenchmarkMode</code></td>
+<td>设置基准测试的模式（如吞吐量、平均时间等）。可选值包括：- <code>Throughput</code>: 单位时间内操作次数- <code>AverageTime</code>: 每个操作平均耗时- <code>SampleTime</code>, <code>SingleShotTime</code>, <code>AllModes</code></td>
+</tr>
+<tr>
+<td><code>@OutputTimeUnit</code></td>
+<td>设置输出结果的时间单位，如 <code>TimeUnit.MILLISECONDS</code> 或 <code>MICROSECONDS</code>。</td>
+</tr>
+<tr>
+<td><code>@State</code></td>
+<td>用于管理基准方法所需的状态变量作用域。常用 <code>Scope.Thread</code> 表示每线程独立状态。</td>
+</tr>
+<tr>
+<td><code>@Fork</code></td>
+<td>设置执行几轮 JVM 启动来规避 JVM 热身阶段的影响，通常设置为 1~3。</td>
+</tr>
+<tr>
+<td><code>@Warmup</code></td>
+<td>预热次数与每次持续时间（JIT 编译优化发生在此阶段）。避免冷启动影响基准数据。</td>
+</tr>
+<tr>
+<td><code>@Measurement</code></td>
+<td>真正采集性能数据的次数和持续时间。建议至少 <code>5 次 × 1s+</code>。</td>
+</tr>
+</tbody>
+</table>
+<h4 id="_7">推荐配置参数说明：</h4>
+<pre><code class="language-java">@BenchmarkMode({Mode.Throughput, Mode.AverageTime}) // 同时测吞吐量和平均耗时
+@OutputTimeUnit(TimeUnit.MICROSECONDS)              // 输出微秒为单位
+@State(Scope.Thread)                                // 每个线程独立状态
+@Fork(1)                                             // 启动 1 次 JVM
+@Warmup(iterations = 5, time = 1)                   // 预热 5 次，每次 1 秒
+@Measurement(iterations = 5, time = 1)              // 采样 5 次，每次 1 秒
+</code></pre>
+<h4 id="systemcurrenttimemillis">为什么不能简单用 System.currentTimeMillis？</h4>
+<p>因为 JVM 启动初期 JIT 编译未完成、内联尚未展开、逃逸分析等优化机制尚未介入，初始运行的耗时非常不稳定。而 JMH 通过：</p>
+<ul>
+<li>
+<p>自动 warm-up 预热阶段；</p>
+</li>
+<li>
+<p>多轮 fork JVM 隔离优化影响；</p>
+</li>
+<li>
+<p>统计误差和波动范围（Error）；</p>
+</li>
+</ul>
+<p>确保了测得结果更真实、更接近应用实际表现。</p>
+<hr />
+<p>希望本文能为你在日常开发与性能优化中提供量化参考！</p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = "../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../js/base.js"></script>
+        <script src="../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
