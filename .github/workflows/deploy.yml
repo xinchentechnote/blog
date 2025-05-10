@@ -5,12 +5,18 @@ on:
     branches:
       - main
 
+# 新增权限配置
+permissions:
+  contents: write  # 必须显式授予写权限
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main branch
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false  # 必须关闭默认凭证
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -23,11 +29,10 @@ jobs:
       - name: Build site
         run: mkdocs build
 
-      - name: Set up Git credentials
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/xinchentechnote/blog.git
-
+      # 替换为更可靠的部署方式
       - name: Deploy to GitHub Pages
-        run: mkdocs gh-deploy --force
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          keep_files: false
