@@ -1,7 +1,7 @@
 name: Deploy MkDocs to GitHub Pages
 
 on:
-  workflow_dispatch:  # 允许手动触发
+  push
 
 jobs:
   deploy:
@@ -9,7 +9,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
