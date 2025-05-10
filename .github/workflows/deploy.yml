@@ -15,7 +15,7 @@ jobs:
       # 再安装 Python 和相关环境
       - uses: actions/setup-python@v4
         with:
-          python-version: 3.10
+          python-version: '3.10'
       # 使用包管理工具 pip 安装 mkdocs-material
       - run: pip install mkdocs-material
       # 使用 mkdocs-material 构建网站并部署到 gh-pages 分支
